@@ -1,4 +1,6 @@
 ﻿using apiMercadoPago.Models;
+using MercadoPago.DataStructures.AdvancedPayment;
+using MercadoPago.Resources;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,68 +14,80 @@ namespace apiMercadoPago.Controllers
 	public class CreatedPayController : ApiController
 	{
 
-		public HttpResponseMessage Post([FromBody] SendApi data)
+		public HttpResponseMessage Post([FromBody]	userAndItems  data )
 		{
 			var status = Request.CreateResponse();
+			Response response = new Response();
+			SetData set = new SetData();
+
 			try
 			{
+				if(String.IsNullOrEmpty(data.user.email) || String.IsNullOrEmpty(data.user.typeIdentificacion) || String.IsNullOrEmpty(data.user.identification)){
+					response.status = false;
+					response.message = "Los datos del usuario estan incompletos por favor verificar";
+					status = Request.CreateResponse(HttpStatusCode.BadRequest, response);
+				}
+				if(data.UserItems.Count == 0)
+				{
+					response.status = false;
+					response.message = "No se ha enviado ningun item para agregar";
+					status = Request.CreateResponse(HttpStatusCode.BadRequest, response);
+				}
+				else
+				{
+					foreach(UserItems items in data.UserItems)
+					{
+						if(String.IsNullOrEmpty(items.id) || String.IsNullOrEmpty(items.title) || String.IsNullOrEmpty(items.currencyid))
+						{
+							response.status = false;
+							response.message = "Uno de los productos no cuenta con los datos necesarios para ser agregados";
+							status = Request.CreateResponse(HttpStatusCode.BadRequest, response);
 
-				if (String.IsNullOrEmpty(data.Payer.userName) || String.IsNullOrEmpty(data.Payer.userSurname) || String.IsNullOrEmpty(data.Payer.userEmail))
-				{
-					status = Request.CreateResponse(HttpStatusCode.BadRequest, "Usuario,Apellido,Email son campos obligatorios");
-				}
-				else if (String.IsNullOrEmpty(data.Payer.userPhone.Number))
-				{
-					status = Request.CreateResponse(HttpStatusCode.BadRequest, "El telefono es obligatorio");
-				}
-				else if (String.IsNullOrEmpty(data.Payer.userIdentification.Number) || String.IsNullOrEmpty(data.Payer.userIdentification.Type))
-				{
-					status = Request.CreateResponse(HttpStatusCode.BadRequest, "Los campos de userIdentification son obligatorios");
-				}
-				else if (String.IsNullOrEmpty(data.Payer.userAddress.StreetName) || String.IsNullOrEmpty(data.Payer.userAddress.ZipCode))
-				{
-					status = Request.CreateResponse(HttpStatusCode.BadRequest, "Los campos de userAddress son obligatorios");
-				}
-				if(data.items.Count == 0)
-				{
-					status = Request.CreateResponse(HttpStatusCode.BadRequest, "No se ha enviado items para agregar");
-				}else
-				{
-					var items = data.items;
-					foreach (Items element in items){
-						if(string.IsNullOrEmpty(element.itemCurrencyid) || string.IsNullOrEmpty(element.itemId)|| string.IsNullOrEmpty(element.itemTitle))
-						{
-							status = Request.CreateResponse(HttpStatusCode.BadRequest, "Los Items que desea agregar no tienes los parametros correctos");
-						}else
-						{
-							status = Request.CreateResponse(HttpStatusCode.OK, "Verificacion Exitosa");
 						}
-					};
+						else if(items.quantity == 0)
+						{
+							response.status = false;
+							response.message = "Uno de los productos no cuenta con los datos necesarios para ser agregados";
+							status = Request.CreateResponse(HttpStatusCode.BadRequest, response);
+						}else if (items.unitPrice < 2000)
+						{
+							response.status = false;
+							response.message = "Uno de los productos no cuenta con el valor minimo; Valor minimo 2000";
+							status = Request.CreateResponse(HttpStatusCode.BadRequest, response);
+						}
+						else
+						{
+							var RData = set.setDataInMercado(data);
+							if(RData.status == true)
+							{
+								response.status = RData.status;
+								response.message = RData.message;
+								status = Request.CreateResponse(HttpStatusCode.OK, response);
+							}
+							else
+							{
+								response.status = RData.status;
+								response.message = RData.message;
+								status = Request.CreateResponse(HttpStatusCode.InternalServerError, response);
+							}
+							
+						}
+
+					}
 				}
+				
 			}
-			catch(Exception ex)
+			catch(Exception error)
 			{
-				status = Request.CreateResponse(HttpStatusCode.InternalServerError, "Internal server error");
+				status = Request.CreateResponse(HttpStatusCode.InternalServerError, error);
 			}
 
-
+			
 
 
 			return status;
 		}
 
-		public HttpResponseMessage Get()
-		{
-			var status = Request.CreateResponse();
-			status = Request.CreateResponse(HttpStatusCode.OK, "Hola mundo");
-			//status = Request.CreateResponse(HttpStatusCode.OK, rowCount, JsonMediaTypeFormatter.DefaultMediaType);
-
-			return status;
-		}
 	}
 
-	public class Array<Items>
-	{
-		public Items item;
-	}
 }

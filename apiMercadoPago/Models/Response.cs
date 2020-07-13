@@ -7,7 +7,12 @@ namespace apiMercadoPago.Models
 {
 	public class Response
 	{
-
 		
+		public Boolean status { get; set; }
+
+		public string message { get; set; }
+		
+
+	
 	}
 }
